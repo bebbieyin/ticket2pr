@@ -1,0 +1,67 @@
+name: ClickUp
+run-name: ${{ github.workflow }} - ${{ github.event.pull_request.title }}
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - closed
+
+concurrency:
+  group: ${{ github.workflow }}-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  update-task-status:
+    name: Update Task Status
+    runs-on: ubuntu-latest
+    env:
+      CLICKUP_TOKEN: ${{ secrets.CLICKUP_TOKEN }}
+      CLICKUP_REVIEW_STATUS: in review
+      CLICKUP_COMPLETE_STATUS: complete
+    steps:
+      - name: Extract ClickUp Task ID
+        id: extract
+        run: |
+          BRANCH="${{ github.head_ref }}"
+          if [[ "$BRANCH" =~ ^CU-([a-zA-Z0-9]+)_ ]]; then
+            echo "task_id=${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
+          else
+            echo "No ClickUp task ID found in branch: $BRANCH"
+            exit 0
+          fi
+
+      - name: Validate ClickUp token
+        if: steps.extract.outputs.task_id != ''
+        run: |
+          if [[ -z "$CLICKUP_TOKEN" ]]; then
+            echo "CLICKUP_TOKEN repository secret is not configured."
+            exit 1
+          fi
+
+      - name: Set status on PR open or update
+        if: |
+          steps.extract.outputs.task_id != '' &&
+          github.event.action != 'closed'
+        run: |
+          curl --fail-with-body --silent --show-error \
+            -X PUT "https://api.clickup.com/api/v2/task/${{ steps.extract.outputs.task_id }}" \
+            -H "Authorization: $CLICKUP_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"status\": \"$CLICKUP_REVIEW_STATUS\"}"
+
+      - name: Set status on PR merged
+        if: |
+          steps.extract.outputs.task_id != '' &&
+          github.event.action == 'closed' &&
+          github.event.pull_request.merged == true
+        run: |
+          curl --fail-with-body --silent --show-error \
+            -X PUT "https://api.clickup.com/api/v2/task/${{ steps.extract.outputs.task_id }}" \
+            -H "Authorization: $CLICKUP_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"status\": \"$CLICKUP_COMPLETE_STATUS\"}"
