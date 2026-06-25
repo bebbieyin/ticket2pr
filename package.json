@@ -3,6 +3,9 @@
   "branch_name": "main",
   "version": "1.0.0",
   "private": true,
+  "scripts": {
+    "commitlint:ticket2pr": "commitlint --config commitlint.ticket2pr.config.js"
+  },
   "devDependencies": {
     "@commitlint/cli": "^20.2.0",
     "@commitlint/config-conventional": "^20.2.0",
