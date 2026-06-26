@@ -1,0 +1,11 @@
+{
+  "name": "ticket2pr-webhook",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-06-26",
+  "kv_namespaces": [
+    {
+      "binding": "WEBHOOK_DEDUPE",
+      "id": "replace-in-cloudflare"
+    }
+  ]
+}
